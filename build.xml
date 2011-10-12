@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="jayuda" default="compile">
+
+	<target name="versionBump" depends="compile">
+		<exec executable="/bin/bash" dir="bin/classes" outputproperty="versionHash">
+			<arg value="-c" />
+			<arg value="/usr/bin/find -mindepth 2 -type f | /usr/bin/sort | grep -v BuildNumber\\.properties | /usr/bin/xargs /bin/cat | /usr/bin/sha1sum | /usr/bin/awk '{ print $1 }'" />
+		</exec>
+		<propertyfile file="src/com/timmattison/jayuda/BuildNumber.properties">
+			<entry  key="buildDate" type="date" value="now"/>
+			<entry  key="buildNumber" type="int" default="000001" operation="+" pattern="000000"/>
+			<entry  key="versionHash" type="string" value="${versionHash}" />
+		</propertyfile>
+	</target>
+
+	<delete file="bin/classes/com/timmattison/jayuda/BuildNumber.properties"/>
+
+	<path id="libs.classpath">
+		<pathelement location="bin/classes"/>
+	</path>
+
+	<target name="clean">
+		<delete quiet="true" includeemptydirs="true">
+			<fileset dir="bin"/>
+			<fileset file="jayuda.jar"/>
+		</delete>
+	</target>
+
+	<target name="compile" unless="compile.unnecessary">
+		<mkdir dir="bin/classes"/>
+		<javac srcdir="src" destdir="bin/classes"
+			classpathref="libs.classpath" debug="true" debuglevel="lines,vars,source"/>
+		<copy file="src/com/timmattison/jayuda/BuildNumber.properties" todir="bin/classes/com/timmattison/jayuda"/>
+	</target>
+
+	<target name="jar" depends="versionBump">
+		<!-- Copy the files to where they're really supposed to go -->
+		<copy todir="com">
+			<fileset dir="bin/classes/com" />
+		</copy>
+
+		<jar destfile="jayuda.jar"
+			basedir="."
+			includes="com/**/*.class,com/**/*.properties,lib/*">
+		</jar>
+
+		<!-- Delete the temporary copy of the classes -->
+		<delete dir="com" />
+	</target>
+</project>
