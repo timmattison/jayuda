@@ -15,7 +15,7 @@ public abstract class LoadLibraryFromJar {
 	 * 
 	 * @return
 	 */
-	protected abstract String getLibraryDirectory();
+	protected abstract String getLibraryDirectory(boolean debug);
 
 	/**
 	 * The human readable name of the library
@@ -37,6 +37,13 @@ public abstract class LoadLibraryFromJar {
 	 * @return
 	 */
 	protected abstract int getReadBufferSize();
+
+	/**
+	 * Whether or not the system is in debug mode
+	 * 
+	 * @return
+	 */
+	protected abstract boolean isDebug();
 
 	public LoadLibraryFromJar() {
 		for (String libraryName : getLibraryNames()) {
@@ -63,9 +70,19 @@ public abstract class LoadLibraryFromJar {
 	 * Loads a library from a JAR
 	 */
 	private void loadFromJar() {
+		// Try to load the libraries
 		for (String libraryName : getLibraryNames()) {
+			// Determine the temporary path name
 			String path = libraryName + new Date().getTime();
-			loadLib(path, libraryName);
+
+			// Are we in debug mode?
+			if (isDebug()) {
+				// Yes, try to load the library from the debug location
+				loadLib(path, libraryName, true);
+			} else {
+				// No, try to the load the library normally
+				loadLib(path, libraryName);
+			}
 		}
 	}
 
@@ -99,23 +116,27 @@ public abstract class LoadLibraryFromJar {
 		}
 	}
 
+	private void loadLib(String path, String name) {
+		loadLib(path, name, false);
+	}
+
 	/**
 	 * Pulls a library out of the JAR, puts it in a temp directory, loads it into memory, and cleans up after itself
 	 */
-	private void loadLib(String path, String name) {
+	private void loadLib(String path, String name, boolean debug) {
 		// Get the name of the library with the proper shared object extension
 		name = name + getSharedObjectExtension();
 
 		// Determine the names of our parent and library temp directories
 		String parentTempDirectoryName = System.getProperty("java.io.tmpdir") + "/" + path;
-		String libTempDirectoryName = parentTempDirectoryName + getLibraryDirectory();
+		String libTempDirectoryName = parentTempDirectoryName + getLibraryDirectory(debug);
 
 		try {
 			// Get the library's as a resource from the class loader and convert it to an input stream
-			InputStream inputStream = LoadLibraryFromJar.class.getResourceAsStream(getLibraryDirectory() + name);
+			InputStream inputStream = LoadLibraryFromJar.class.getResourceAsStream(getLibraryDirectory(debug) + name);
 
 			if (inputStream == null) {
-				throw new IllegalStateException("Couldn't get an input stream for " + getLibraryDirectory() + name);
+				throw new IllegalStateException("Couldn't get an input stream for " + getLibraryDirectory(debug) + name);
 			}
 
 			// Create the directories necessary for our temp files
